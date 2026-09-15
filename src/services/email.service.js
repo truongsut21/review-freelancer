@@ -55,10 +55,12 @@ export function describeEmailError(error) {
 }
 
 export async function sendConfirmationEmail(rsvp) {
+  const declined = rsvp.attendance === "decline";
+
   return sendEmail({
     to: rsvp.email,
-    subject: "Confirmation RSVP - Stella & Geovanni",
-    html: buildConfirmationTemplate(rsvp),
+    subject: declined ? "Merci pour votre réponse - Stella & Geovanni" : "Confirmation RSVP - Stella & Geovanni",
+    html: declined ? buildDeclineTemplate(rsvp) : buildConfirmationTemplate(rsvp),
     logContext: `Confirmation email skipped for ${rsvp.email}.`
   });
 }
@@ -164,13 +166,35 @@ function parseSmtpPort(value) {
   return Number.isInteger(port) && port > 0 ? port : 587;
 }
 
+const sectionTitleStyle = "font-family:Georgia,serif;font-size:18px;letter-spacing:1px;margin:0 0 12px;color:#2C2824;";
+const paragraphStyle = "margin:0 0 20px;line-height:1.7;";
+
+function wrapTemplate(body) {
+  return `
+    <div style="margin:0;padding:32px;background:#FDFBF7;color:#2C2824;font-family:Arial,sans-serif;">
+      <div style="max-width:620px;margin:0 auto;background:#fffaf4;border:1px solid #eadfd0;padding:32px;">
+        <div style="font-family:Georgia,serif;font-size:44px;text-align:center;margin:0 0 24px;">S | G</div>
+        ${body}
+      </div>
+    </div>
+  `;
+}
+
+function buildDeclineTemplate(rsvp) {
+  const name = escapeHtml(rsvp.fullName);
+
+  return wrapTemplate(`
+        <p style="${paragraphStyle}">Chers ${name},</p>
+        <p style="${paragraphStyle}">Merci beaucoup pour votre réponse. Nous sommes bien sûr déçus de ne pas pouvoir vous compter parmi nous ce jour-là, mais nous comprenons tout à fait.</p>
+        <p style="${paragraphStyle}">Votre pensée nous accompagnera et nous ne manquerons pas de vous partager quelques photos après la cérémonie.</p>
+        <p style="${paragraphStyle}">Nous espérons avoir l'occasion de vous revoir très bientôt pour fêter cela ensemble à notre manière.</p>
+        <p style="margin:0;line-height:1.7;">Avec toute notre affection,<br />Stella &amp; Geovanni</p>
+  `);
+}
+
 function buildConfirmationTemplate(rsvp) {
   const attendsReception = rsvp.attendance === "reception" || rsvp.attendance === "both";
   const name = escapeHtml(rsvp.fullName);
-
-  const sectionTitleStyle =
-    "font-family:Georgia,serif;font-size:18px;letter-spacing:1px;margin:0 0 12px;color:#2C2824;";
-  const paragraphStyle = "margin:0 0 20px;line-height:1.7;";
 
   const introText = attendsReception
     ? "Voici toutes les informations pratiques pour cette belle journée :"
@@ -202,10 +226,7 @@ function buildConfirmationTemplate(rsvp) {
     ? "Si vous avez la moindre question (covoiturage, hébergement, allergies alimentaires…), n'hésitez pas à contacter les weddings planners."
     : "Si vous avez la moindre question, n'hésitez pas à contacter les weddings planners.";
 
-  return `
-    <div style="margin:0;padding:32px;background:#FDFBF7;color:#2C2824;font-family:Arial,sans-serif;">
-      <div style="max-width:620px;margin:0 auto;background:#fffaf4;border:1px solid #eadfd0;padding:32px;">
-        <div style="font-family:Georgia,serif;font-size:44px;text-align:center;margin:0 0 24px;">S | G</div>
+  return wrapTemplate(`
         <p style="${paragraphStyle}">Chers ${name},</p>
         <p style="${paragraphStyle}">Nous sommes très heureux de vous compter parmi nous pour célébrer notre mariage et nous vous remercions d'avoir confirmé votre présence !</p>
         <p style="${paragraphStyle}">${introText}</p>
@@ -214,9 +235,7 @@ function buildConfirmationTemplate(rsvp) {
         <p style="${paragraphStyle}">${questionText}</p>
         <p style="${paragraphStyle}">Nous avons hâte de partager ce moment unique avec vous !</p>
         <p style="margin:0;line-height:1.7;">Avec tout notre amour,<br />Stella &amp; Geovanni</p>
-      </div>
-    </div>
-  `;
+  `);
 }
 
 function escapeHtml(value = "") {

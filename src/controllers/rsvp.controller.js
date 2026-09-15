@@ -12,16 +12,14 @@ export async function postRsvp(req, res) {
   }
 
   const rsvp = await submitRsvp(req.app, req.body);
-  let confirmationEmail = "not-required";
+  let confirmationEmail;
 
-  if (["ceremony", "reception", "both"].includes(rsvp.attendance)) {
-    try {
-      const emailResult = await sendConfirmationEmail(rsvp);
-      confirmationEmail = emailResult.skipped ? "skipped" : "sent";
-    } catch (error) {
-      confirmationEmail = "failed";
-      console.error(`Confirmation email failed for ${rsvp.email}:`, describeEmailError(error));
-    }
+  try {
+    const emailResult = await sendConfirmationEmail(rsvp);
+    confirmationEmail = emailResult.skipped ? "skipped" : "sent";
+  } catch (error) {
+    confirmationEmail = "failed";
+    console.error(`Confirmation email failed for ${rsvp.email}:`, describeEmailError(error));
   }
 
   res.status(201).json({ ok: true, rsvp, confirmationEmail });
