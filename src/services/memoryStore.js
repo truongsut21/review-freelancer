@@ -63,7 +63,7 @@ export const memoryStore = {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    rsvps = [record, ...rsvps.filter((item) => normalizeName(item.fullName) !== normalizedName)];
+    rsvps = [record, ...rsvps.filter((item) => item.email !== payload.email)];
     return record;
   },
 

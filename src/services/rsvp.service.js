@@ -1,7 +1,6 @@
 import { RSVP } from "../models/RSVP.js";
 import { memoryStore } from "./memoryStore.js";
 import { findGuestByName } from "./guest.service.js";
-import { normalizeName } from "../utils/normalize.js";
 
 export async function submitRsvp(app, payload) {
   const guest = await findGuestByName(app, payload.fullName);
@@ -13,10 +12,11 @@ export async function submitRsvp(app, payload) {
     throw error;
   }
 
+  const email = String(payload.email || "").trim().toLowerCase();
   const data = {
     guest: guest?._id || guest?.id,
     fullName: payload.fullName,
-    email: payload.email,
+    email,
     phone: payload.phone || "",
     attendance: payload.attendance,
     dietaryRequirements: ["reception", "both"].includes(payload.attendance) ? payload.dietaryRequirements || "" : "",
@@ -27,7 +27,7 @@ export async function submitRsvp(app, payload) {
     return memoryStore.upsertRsvp(data);
   }
 
-  return RSVP.findOneAndUpdate({ fullName: new RegExp(`^${escapeRegExp(payload.fullName)}$`, "i") }, { $set: data, $unset: { partySize: "", menuChoice: "" } }, {
+  return RSVP.findOneAndUpdate({ email }, { $set: data, $unset: { partySize: "", menuChoice: "" } }, {
     new: true,
     upsert: true,
     setDefaultsOnInsert: true,
@@ -57,8 +57,4 @@ export async function getRsvpStats(app) {
     declined,
     pending: Math.max(guests.length - rsvps.length, 0)
   };
-}
-
-function escapeRegExp(value) {
-  return normalizeName(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
