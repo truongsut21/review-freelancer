@@ -151,9 +151,12 @@ async function sendViaBrevoApi({ to, subject, html, from, timeout }) {
   }
 }
 
+// Accepts `Name <email>`, `"Name" <email>` or a bare email. Hosting dashboards
+// (e.g. Render) keep surrounding quotes in env values, so strip those first.
 function parseAddress(value) {
-  const match = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/.exec(value);
-  return match ? { name: match[1].trim(), email: match[2].trim() } : { email: value.trim() };
+  const raw = String(value ?? "").trim().replace(/^["']+|["']+$/g, "").trim();
+  const match = /^"?([^"<]*?)"?\s*<([^>]+)>$/.exec(raw);
+  return match ? { name: match[1].trim(), email: match[2].trim() } : { email: raw };
 }
 
 function parseSmtpPort(value) {
