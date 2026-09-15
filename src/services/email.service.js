@@ -99,36 +99,55 @@ function parseSmtpPort(value) {
 }
 
 function buildConfirmationTemplate(rsvp) {
-  const attendanceLabels = {
-    ceremony: "Présent à la cérémonie uniquement",
-    reception: "Présent à la réception uniquement",
-    both: "Présent aux deux",
-    decline: "Absent"
-  };
-  const attendsCeremony = rsvp.attendance === "ceremony" || rsvp.attendance === "both";
   const attendsReception = rsvp.attendance === "reception" || rsvp.attendance === "both";
-  const venueRows = [
-    attendsCeremony ? "Cérémonie civile : 9h00, Mairie de Toulouse" : "",
-    attendsReception ? "Vin d'honneur et réception : à partir de 16h00" : "",
-    "Point GPS de rassemblement : https://www.google.com/maps/search/?api=1&query=Mairie+de+Toulouse"
-  ].filter(Boolean);
+  const name = escapeHtml(rsvp.fullName);
+
+  const sectionTitleStyle =
+    "font-family:Georgia,serif;font-size:18px;letter-spacing:1px;margin:0 0 12px;color:#2C2824;";
+  const paragraphStyle = "margin:0 0 20px;line-height:1.7;";
+
+  const introText = attendsReception
+    ? "Voici toutes les informations pratiques pour cette belle journée :"
+    : "Voici les informations pratiques pour nous rejoindre :";
+
+  const ceremonySection = `
+    <h2 style="${sectionTitleStyle}">LA CÉRÉMONIE</h2>
+    <p style="${paragraphStyle}">
+      <strong>Mairie de Toulouse, Le Capitole</strong><br />
+      1 Place du Capitole, 31000 Toulouse<br /><br />
+      Rendez-vous à 9h00 précises, un point GPS de regroupement vous sera envoyé par WhatsApp ultérieurement.<br /><br />
+      Attention : aucun retard ne pourra être toléré, la cérémonie débutant à l'heure exacte. Nous vous conseillons d'arriver avec un peu d'avance, le stationnement en centre-ville pouvant être difficile (parkings Capitole ou Jean Jaurès à proximité, ou métro ligne A station Capitole).
+    </p>
+  `;
+
+  const receptionSection = attendsReception
+    ? `
+    <h2 style="${sectionTitleStyle}">LA RÉCEPTION</h2>
+    <p style="${paragraphStyle}">
+      <strong>L'Entretoise</strong><br />
+      6 rue Danielle Casanova, Z.A. Le Segla, 31600 Seysses<br /><br />
+      Début du vin d'honneur à 16h00.<br /><br />
+      Un parking privatif et gratuit est à votre disposition sur place.
+    </p>
+  `
+    : "";
+
+  const questionText = attendsReception
+    ? "Si vous avez la moindre question (covoiturage, hébergement, allergies alimentaires…), n'hésitez pas à contacter les weddings planners."
+    : "Si vous avez la moindre question, n'hésitez pas à contacter les weddings planners.";
 
   return `
     <div style="margin:0;padding:32px;background:#FDFBF7;color:#2C2824;font-family:Arial,sans-serif;">
       <div style="max-width:620px;margin:0 auto;background:#fffaf4;border:1px solid #eadfd0;padding:32px;">
-        <div style="font-family:Georgia,serif;font-size:44px;text-align:center;">S | G</div>
-        <h1 style="font-family:Georgia,serif;text-align:center;font-size:34px;margin:22px 0 8px;">Merci pour votre réponse</h1>
-        <p style="text-align:center;margin:0 0 24px;">Nous avons bien enregistré votre RSVP pour le mariage de Stella & Geovanni.</p>
-        <table style="width:100%;border-collapse:collapse;">
-          <tr><td style="padding:10px;border-top:1px solid #eadfd0;">Nom</td><td style="padding:10px;border-top:1px solid #eadfd0;"><strong>${escapeHtml(rsvp.fullName)}</strong></td></tr>
-          <tr><td style="padding:10px;border-top:1px solid #eadfd0;">Présence</td><td style="padding:10px;border-top:1px solid #eadfd0;"><strong>${attendanceLabels[rsvp.attendance] || escapeHtml(rsvp.attendance)}</strong></td></tr>
-        </table>
-        <div style="margin:24px 0 0;line-height:1.7;">
-          <p style="margin:0 0 8px;"><strong>Date :</strong> 07 novembre 2026</p>
-          <ul style="margin:0;padding-left:20px;">
-            ${venueRows.map((row) => `<li>${escapeHtml(row)}</li>`).join("")}
-          </ul>
-        </div>
+        <div style="font-family:Georgia,serif;font-size:44px;text-align:center;margin:0 0 24px;">S | G</div>
+        <p style="${paragraphStyle}">Chers ${name},</p>
+        <p style="${paragraphStyle}">Nous sommes très heureux de vous compter parmi nous pour célébrer notre mariage et nous vous remercions d'avoir confirmé votre présence !</p>
+        <p style="${paragraphStyle}">${introText}</p>
+        ${ceremonySection}
+        ${receptionSection}
+        <p style="${paragraphStyle}">${questionText}</p>
+        <p style="${paragraphStyle}">Nous avons hâte de partager ce moment unique avec vous !</p>
+        <p style="margin:0;line-height:1.7;">Avec tout notre amour,<br />Stella &amp; Geovanni</p>
       </div>
     </div>
   `;
