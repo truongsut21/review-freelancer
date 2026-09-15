@@ -1,7 +1,28 @@
+import dns from "node:dns";
 import nodemailer from "nodemailer";
 
+// Render has no outbound IPv6; make Node try IPv4 addresses first.
+dns.setDefaultResultOrder("ipv4first");
+
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+
 export function getEmailConfigStatus() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM } = process.env;
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, BREVO_API_KEY } = process.env;
+
+  if (BREVO_API_KEY?.trim()) {
+    const from = MAIL_FROM?.trim() || "";
+    return {
+      configured: Boolean(from),
+      missing: from ? [] : ["MAIL_FROM"],
+      transport: "brevo-api",
+      host: "api.brevo.com",
+      port: 443,
+      secure: true,
+      user: "",
+      from
+    };
+  }
+
   const missing = [
     ["SMTP_HOST", SMTP_HOST],
     ["SMTP_USER", SMTP_USER],
@@ -14,6 +35,7 @@ export function getEmailConfigStatus() {
   return {
     configured: missing.length === 0,
     missing,
+    transport: "smtp",
     host: SMTP_HOST?.trim() || "",
     port,
     secure: port === 465,
@@ -68,6 +90,12 @@ async function sendEmail({ to, subject, html, logContext }) {
   }
 
   const timeout = Number(SMTP_TIMEOUT_MS || 12000);
+
+  if (config.transport === "brevo-api") {
+    await sendViaBrevoApi({ to, subject, html, from: config.from, timeout });
+    return { skipped: false };
+  }
+
   const smtpPassword = SMTP_PASS.replace(/\s/g, "");
   const transporter = nodemailer.createTransport({
     host: config.host,
@@ -91,6 +119,41 @@ async function sendEmail({ to, subject, html, logContext }) {
   });
 
   return { skipped: false };
+}
+
+// Render's free tier blocks outbound SMTP ports, so this HTTP transport is used
+// there instead of nodemailer when BREVO_API_KEY is set.
+async function sendViaBrevoApi({ to, subject, html, from, timeout }) {
+  const sender = parseAddress(from);
+  const response = await fetch(BREVO_API_URL, {
+    method: "POST",
+    signal: AbortSignal.timeout(timeout),
+    headers: {
+      "api-key": process.env.BREVO_API_KEY.trim(),
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      sender,
+      to: [{ email: to }],
+      subject,
+      htmlContent: html
+    })
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    const error = new Error(`Brevo API responded ${response.status}: ${body}`);
+    error.code = "BREVO_API";
+    error.responseCode = response.status;
+    error.response = body;
+    throw error;
+  }
+}
+
+function parseAddress(value) {
+  const match = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/.exec(value);
+  return match ? { name: match[1].trim(), email: match[2].trim() } : { email: value.trim() };
 }
 
 function parseSmtpPort(value) {
