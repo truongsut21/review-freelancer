@@ -29,6 +29,11 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.get("/api/ip", async (req, res) => {
+  const response = await fetch("https://api.ipify.org?format=json");
+  res.json(await response.json());
+});
+
 app.use("/api/guests", guestRoutes);
 app.use("/api/rsvp", rsvpRoutes);
 app.use("/api/admin", adminRoutes);
